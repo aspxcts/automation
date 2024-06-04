@@ -63,7 +63,7 @@ async function monitorAndReport() {
 }
 
 // Schedule the function to run every 5 minutes
-setInterval(monitorAndReport, 10 * 1000);
+setInterval(monitorAndReport, 5 * 60 * 1000);
 
 // Run immediately on startup
 monitorAndReport();
