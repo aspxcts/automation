@@ -1,7 +1,34 @@
 const axios = require('axios');
+const { spawn } = require('child_process');
+const os = require('os');
+const path = require('path');
 
+
+const CENTRAL_SERVER_URL = 'http://192.168.1.35:3000/data';
 // Your Discord bot's endpoint to send data
-const DISCORD_WEBHOOK_URL = 'https://discord.com/api/webhooks/1247407237966856264/2Ur4B1NA7tRm3glsJJmj9x-aypQbqTF24WjrCNsm8V8S4ZcOhJFdLm6R_cwHuPuAqzMb';
+
+async function runFile() {
+    const pythonScriptPath = path.join(__dirname, 'remoteRun.py');
+    console.log('before spawn');
+    
+    const pythonProcess = spawn('python', [pythonScriptPath]);
+
+    // Log standard output from the Python script
+    pythonProcess.stdout.on('data', (data) => {
+        console.log(`stdout: ${data}`);
+    });
+
+    // Log any errors from the Python script
+    pythonProcess.stderr.on('data', (data) => {
+        console.error(`stderr: ${data}`);
+    });
+
+    // Log the exit code when the Python script finishes
+    pythonProcess.on('close', (code) => {
+        console.log(`Python script exited with code ${code}`);
+    });
+}
+
 
 // Function to get CPU temperature
 async function getCpuTemperature() {
@@ -39,19 +66,31 @@ async function getWattage() {
 }
 
 // Function to send data to Discord bot
-async function sendDataToDiscord(cpuTemp, getWattage) {
+//async function sendDataToDiscord(cpuTemp, getWattage) {
+    //try {
+        //await fetch(DISCORD_WEBHOOK_URL, {
+            //method: 'POST',
+            //headers: {
+                //'Content-Type': 'application/json',
+            //},
+            //body: JSON.stringify({
+                //content: `Server Machine #3: CPU Temperature: ${cpuTemp}, CPU Wattage: ${getWattage}`
+            //}),
+        //});
+    //} catch (error) {
+        //console.error('Error sending data to Discord:', error);
+    //}
+//}
+
+async function sendDataToServer(cpuTemp, wattage) {
     try {
-        await fetch(DISCORD_WEBHOOK_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                content: `Server Machine #3: CPU Temperature: ${cpuTemp}, CPU Wattage: ${getWattage}`
-            }),
+        await axios.post(CENTRAL_SERVER_URL, {
+            hostname: os.hostname(),
+            cpuTemp: cpuTemp,
+            wattage: wattage
         });
     } catch (error) {
-        console.error('Error sending data to Discord:', error);
+        console.error('Error sending data to central server:', error);
     }
 }
 
@@ -59,11 +98,11 @@ async function sendDataToDiscord(cpuTemp, getWattage) {
 async function monitorAndReport() {
     const cpuTemp = await getCpuTemperature();
     const wattage = await getWattage();
-    await sendDataToDiscord(cpuTemp, wattage);
+    await sendDataToServer(cpuTemp, wattage);
 }
 
 // Schedule the function to run every 5 minutes
-setInterval(monitorAndReport, 5 * 60 * 1000);
+setInterval(monitorAndReport, 10 * 1000);
 
 // Run immediately on startup
 monitorAndReport();
