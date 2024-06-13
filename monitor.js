@@ -10,9 +10,9 @@ async function getCpuTemperature() {
         const response = await axios.get('http://localhost:8085/data.json');
         const data = response.data;
         const cpuSensors = data.Children[0].Children[1].Children[1].Children;
-        for (const sensor of cpuSensors) {
-            if (sensor.Text === 'CPU Package') {    
-                return sensor.Value;
+        for (const value of cpuSensors) {
+            if (value.Text === 'CPU Package') {    
+                return value.Value;
             }
         }
         return 'N/A'; 
@@ -39,23 +39,41 @@ async function getWattage() {
     }
 }
 
+async function getCpuLoad() {
+    try {
+        const response = await axios.get('http://localhost:8085/data.json');
+        const data = response.data;
+        const cpuLoad = data.Children[0].Children[1].Children[2].Children;
+        for (const value of cpuLoad) {
+            if (value.Text === 'CPU Total') {    
+                return value.Value;
+            }
+        }
+        return 'N/A'; 
+    } catch (error) {
+        console.error('Error getting CPU wattage from Open Hardware Monitor:', error);
+        return 'Error';
+    }
+}
 
-async function sendDataToServer(cpuTemp, wattage) {
+async function sendDataToServer(cpuTemp, wattage, cpuLoad) {
     try {
         await axios.post(CENTRAL_SERVER_URL, {
             hostname: os.hostname(),
             cpuTemp: cpuTemp,
-            wattage: wattage
+            wattage: wattage,
+            cpuLoad: cpuLoad
         });
     } catch (error) {
         console.error('Error sending data to central server:', error);
     }
-}
+}   
 
 async function monitorAndReport() {
     const cpuTemp = await getCpuTemperature();
     const wattage = await getWattage();
-    await sendDataToServer(cpuTemp, wattage);
+    const cpuLoad = await getCpuLoad();
+    await sendDataToServer(cpuTemp, wattage, cpuLoad);
 }
 
 setInterval(monitorAndReport, 10 * 1000);
